@@ -51,12 +51,25 @@ example_smiles = {
     "Paracetamol": "CC(=O)NC1=CC=C(C=C1)O",
     "Custom": ""
 }
-selected_example = st.selectbox("Choose a molecule or enter custom SMILES:", list(example_smiles.keys()))
-if selected_example == "Custom":
-    smiles = st.text_input("Enter SMILES string:")
-else:
-    smiles = example_smiles[selected_example]
+
+col_examples, col_smiles = st.columns([1, 2])
+with col_examples:
+    selected_example = st.selectbox("Choose a molecule or enter custom SMILES:", list(example_smiles.keys()))
+
+with col_smiles:
+    if selected_example == "Custom":
+        smiles = st.text_input("Enter SMILES string:")
+    else:
+        smiles = example_smiles[selected_example]
     st.text(f"SMILES: {smiles}")
+
+    # Displaying additional molecule information
+    mol = Chem.MolFromSmiles(smiles)
+    if mol:
+        st.text(f"Formula: {rdMolDescriptors.CalcMolFormula(mol)}")
+        st.text(f"Canonical SMILES: {Chem.MolToSmiles(mol, canonical=True)}")
+        st.text(f"InChI: {Chem.MolToInchi(mol)}")
+        st.text(f"InChI Key: {Chem.InchiToInchiKey(Chem.MolToInchi(mol))}")
 
 # Molecule setup
 toggle_code("""
