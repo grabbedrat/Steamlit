@@ -34,9 +34,53 @@ if uploaded_file is not None:
                 'tags': a.get('tags')
             }
             bookmarks.append(bookmark)
-        return pd.DataFrame(bookmarks)
+        return pd.DataFrame(bookmarks).rename(columns=lambda x: x.lower())
 
+    # Create DataFrame
     bookmarks_df = extract_bookmarks(soup)
+    
+    # Data Preprocessing
+    st.header("Data Preprocessing")
+    with st.expander("Preprocessing Options", expanded=True):
+        col1, col2 = st.columns(2)
+        with col1:
+            remove_duplicates = st.checkbox("Remove Duplicates", value=True)
+            duplicate_criterion = st.radio("Duplicate Criterion", ["url", "title"])
+        with col2:
+            trim_titles = st.checkbox("Trim Long Titles", value=True)
+            max_title_length = st.number_input("Max Title Length", min_value=10, max_value=200, value=100)
+
+    # Perform preprocessing
+    original_count = len(bookmarks_df)
+
+    if remove_duplicates:
+        bookmarks_df = bookmarks_df.drop_duplicates(subset=[duplicate_criterion], keep='first')
+
+    if trim_titles:
+        bookmarks_df['title'] = bookmarks_df['title'].apply(lambda x: x[:max_title_length] if x else x)
+
+    preprocessed_count = len(bookmarks_df)
+    st.write(f"Bookmarks reduced from {original_count} to {preprocessed_count}")
+    
+    # Display bookmarks and tags
+    st.header("Bookmarks and Tags")
+    with st.expander("View Bookmarks and Tags", expanded=False):
+        # Create a dataframe with only title, url, and tags
+        display_df = bookmarks_df[['title', 'url', 'tags']]
+        
+        # Add a search box
+        search_term = st.text_input("Search bookmarks", "")
+        
+        if search_term:
+            # Filter the dataframe based on the search term
+            filtered_df = display_df[display_df['title'].str.contains(search_term, case=False) | 
+                                     display_df['url'].str.contains(search_term, case=False) | 
+                                     display_df['tags'].str.contains(search_term, case=False)]
+        else:
+            filtered_df = display_df
+        
+        # Display the filtered dataframe
+        st.dataframe(filtered_df)
     
     # Embedding generation
     @st.cache_data
