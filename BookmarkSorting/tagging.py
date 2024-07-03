@@ -16,7 +16,7 @@ ssl_context.verify_mode = ssl.CERT_NONE
 
 async def generate_tags_for_batch(batch, session):
     async def generate_tags_for_bookmark(title, url):
-        prompt = f"Generate 5 relevant, comma-separated tags for the following bookmark:\nTitle: {title}\nURL: {url}\n\nTags:"
+        prompt = f"(for the purpose of later heichical semantic clustering) Generate 8 relevant, comma-separated tags for the following bookmark:\nTitle: {title}\nURL: {url}\n\nTags:"
         
         try:
             async with session.post(

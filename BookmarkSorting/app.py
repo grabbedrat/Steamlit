@@ -41,18 +41,64 @@ if uploaded_file is not None:
         st.dataframe(filtered_df, key="filtered_df")
     
     # Embedding generation
-    embeddings = generate_embeddings(bookmarks_df['title'], bookmarks_df['url'])
+    embeddings = generate_embeddings(bookmarks_df['title'], bookmarks_df['url'], bookmarks_df['tags'])
 
     # Dimensionality reduction and clustering parameters
     with st.expander("Clustering Parameters", expanded=False):
-        min_cluster_size = st.slider('Min Cluster Size', 2, 20, 5, key="min_cluster_size")
-        min_samples = st.slider('Min Samples', 1, 10, 1, key="min_samples")
-        cluster_selection_epsilon = st.slider('Cluster Selection Epsilon', 0.0, 1.0, 0.0, key="cluster_selection_epsilon")
-        metric = st.selectbox('Distance Metric', ['euclidean', 'cosine', 'manhattan'], key="distance_metric")
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            min_cluster_size = st.slider(
+                'Min Cluster Size', 
+                min_value=2, 
+                max_value=20, 
+                value=5, 
+                key="min_cluster_size",
+                help="Minimum number of samples in a cluster. Larger values result in fewer, larger clusters."
+            )
+            
+            min_samples = st.slider(
+                'Min Samples', 
+                min_value=1, 
+                max_value=10, 
+                value=1, 
+                key="min_samples",
+                help="Number of samples in a neighborhood for a point to be considered a core point. Higher values make the algorithm more conservative."
+            )
+            
+        with col2:
+            cluster_selection_epsilon = st.slider(
+                'Cluster Selection Epsilon', 
+                min_value=0.0, 
+                max_value=1.0, 
+                value=0.0, 
+                key="cluster_selection_epsilon",
+                help="Distance threshold for cluster merging. Larger values cause more aggressive merging. Use 0.0 for automatic selection."
+            )
+            
+            metric = st.selectbox(
+                'Distance Metric', 
+                ['euclidean', 'cosine', 'manhattan'], 
+                key="distance_metric",
+                help="Method to calculate distance between points. 'euclidean' is standard, 'cosine' is good for high-dimensional data, 'manhattan' for sparse data."
+            )
 
     with st.expander("Dimensionality Reduction", expanded=False):
-        n_components = st.slider('Number of Components', 2, 10, 2, key="n_components")
-        normalize = st.checkbox('Normalize Data', value=True, key="normalize_data")
+        n_components = st.slider(
+            'Number of Components', 
+            min_value=2, 
+            max_value=50, 
+            value=10, 
+            key="n_components",
+            help="Number of dimensions to reduce the data to. Higher values preserve more information but may introduce noise."
+        )
+        
+        normalize = st.checkbox(
+            'Normalize Data', 
+            value=True, 
+            key="normalize_data",
+            help="Standardize features by removing the mean and scaling to unit variance. Generally recommended for most datasets."
+        )
 
     # Preprocessing and dimensionality reduction
     reduced_features = preprocess_and_reduce(embeddings, n_components, normalize)
