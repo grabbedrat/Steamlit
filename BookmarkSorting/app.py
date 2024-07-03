@@ -1,9 +1,10 @@
 import streamlit as st
 import pandas as pd
+import numpy as np
 from data_preprocessing import load_and_preprocess_data
 from embedding import generate_embeddings
-from clustering import preprocess_and_reduce, perform_clustering
-from visualization import create_cluster_visualization, display_cluster_contents
+from clustering import preprocess_and_reduce, perform_clustering, perform_hierarchical_clustering
+from visualization import create_cluster_visualization, plot_dendrogram, plot_treemap
 from utils import generate_prompts
 
 # Set page config
@@ -23,103 +24,73 @@ if uploaded_file is not None:
     # Display bookmarks and tags
     st.header("Bookmarks and Tags")
     with st.expander("View Bookmarks and Tags", expanded=False):
-        # Create a dataframe with only title, url, and tags
         display_df = bookmarks_df[['title', 'url', 'tags']]
-        
-        # Add a search box
         search_term = st.text_input("Search bookmarks", "", key="search_bookmarks")
         
         if search_term:
-            # Filter the dataframe based on the search term
             filtered_df = display_df[display_df['title'].str.contains(search_term, case=False) | 
                                      display_df['url'].str.contains(search_term, case=False) | 
                                      display_df['tags'].str.contains(search_term, case=False)]
         else:
             filtered_df = display_df
         
-        # Display the filtered dataframe
         st.dataframe(filtered_df, key="filtered_df")
     
     # Embedding generation
     embeddings = generate_embeddings(bookmarks_df['title'], bookmarks_df['url'], bookmarks_df['tags'])
 
-    # Dimensionality reduction and clustering parameters
+    # Clustering parameters
     with st.expander("Clustering Parameters", expanded=False):
         col1, col2 = st.columns(2)
         
         with col1:
-            min_cluster_size = st.slider(
-                'Min Cluster Size', 
-                min_value=2, 
-                max_value=20, 
-                value=3, 
-                key="min_cluster_size",
-                help="Minimum number of samples in a cluster. Larger values result in fewer, larger clusters."
-            )
+            min_cluster_size = st.slider('Min Cluster Size', min_value=2, max_value=20, value=3, key="min_cluster_size",
+                                         help="Minimum number of samples in a cluster. Smaller values allow for more fine-grained clusters.")
             
-            min_samples = st.slider(
-                'Min Samples', 
-                min_value=1, 
-                max_value=10, 
-                value=1, 
-                key="min_samples",
-                help="Number of samples in a neighborhood for a point to be considered a core point. Higher values make the algorithm more conservative."
-            )
+            min_samples = st.slider('Min Samples', min_value=1, max_value=10, value=1, key="min_samples",
+                                    help="Number of samples in a neighborhood for a point to be considered a core point. Higher values make the algorithm more conservative.")
             
         with col2:
-            cluster_selection_epsilon = st.slider(
-                'Cluster Selection Epsilon', 
-                min_value=0.0, 
-                max_value=1.0, 
-                value=0.0, 
-                key="cluster_selection_epsilon",
-                help="Distance threshold for cluster merging. Larger values cause more aggressive merging. Use 0.0 for automatic selection."
-            )
+            cluster_selection_epsilon = st.slider('Cluster Selection Epsilon', min_value=0.0, max_value=1.0, value=0.0, step=0.05, key="cluster_selection_epsilon",
+                                                  help="Distance threshold for cluster merging. Smaller values allow for more fine-grained clusters. Use 0.0 for automatic selection.")
             
-            # In the clustering parameters section
-            metric = st.selectbox(
-                'Distance Metric', 
-                ['euclidean', 'manhattan', 'cosine'],  # Added 'cosine' back
-                index=2,
-                key="distance_metric",
-                help="Method to calculate distance between points. 'euclidean' is standard, 'cosine' is good for high-dimensional data, 'manhattan' for sparse data. Note: 'cosine' will precompute distances, which may be slower for large datasets."
-            )
+            metric = st.selectbox('Distance Metric', ['euclidean', 'manhattan', 'cosine'], index=2, key="distance_metric",
+                                  help="Method to calculate distance between points. 'cosine' is often good for text-based data.")
 
-            # Add a note about the cosine metric
-            if metric == 'cosine':
-                st.info("Using cosine similarity. This will precompute distances, which may take longer for large datasets.")
-
+    # Dimensionality reduction parameters
     with st.expander("Dimensionality Reduction", expanded=False):
-        n_components = st.slider(
-            'Number of Components', 
-            min_value=2, 
-            max_value=50, 
-            value=10, 
-            key="n_components",
-            help="Number of dimensions to reduce the data to. Higher values preserve more information but may introduce noise."
-        )
+        dimensionality_reduction_method = st.selectbox('Dimensionality Reduction Method', ['PCA', 'UMAP', 't-SNE'], index=1, key="dimensionality_reduction_method",
+                                                       help="Method to reduce the dimensionality of the data. UMAP and t-SNE often produce better separations for visualization.")
         
-        normalize = st.checkbox(
-            'Normalize Data', 
-            value=True, 
-            key="normalize_data",
-            help="Standardize features by removing the mean and scaling to unit variance. Generally recommended for most datasets."
-        )
+        n_components = st.slider('Number of Components', min_value=2, max_value=50, value=10, key="n_components",
+                                 help="Number of dimensions to reduce the data to. Higher values preserve more information.")
+        
+        normalize = st.checkbox('Normalize Data', value=True, key="normalize_data",
+                                help="Standardize features by removing the mean and scaling to unit variance.")
 
     # Preprocessing and dimensionality reduction
-    reduced_features = preprocess_and_reduce(embeddings, n_components, normalize)
+    reduced_features = preprocess_and_reduce(embeddings, n_components, normalize, dimensionality_reduction_method)
 
     # Clustering
     clusterer = perform_clustering(reduced_features, min_cluster_size, min_samples, cluster_selection_epsilon, metric)
 
-    # Visualization
-    st.header('Clustering Visualization')
-    fig = create_cluster_visualization(reduced_features, clusterer.labels_, bookmarks_df['title'])
-    st.plotly_chart(fig, use_container_width=True)
 
-    # Display cluster contents
-    st.header('Cluster Contents')
-    display_cluster_contents(clusterer.labels_, bookmarks_df)
+    # Visualization
+    st.header('Cluster Visualization and Hierarchy')
+    col1, col2 = st.columns(2)
+
+    with col1:
+        fig = create_cluster_visualization(reduced_features, clusterer.labels_, bookmarks_df['title'])
+        st.plotly_chart(fig, use_container_width=True)
+
+    with col2:
+        unique_clusters = len(set(clusterer.labels_)) - (1 if -1 in clusterer.labels_ else 0)
+        if unique_clusters > 1:
+            linkage_matrix = perform_hierarchical_clustering(clusterer, reduced_features)
+            treemap_fig = plot_treemap(linkage_matrix, clusterer.labels_, bookmarks_df['title'])
+            st.plotly_chart(treemap_fig, use_container_width=True)
+        else:
+            st.write("Not enough clusters to create a hierarchy. Try adjusting clustering parameters.")
 
     # Generate prompts
     st.header('Generated Prompts')
