@@ -47,14 +47,15 @@ if 'story_graph' not in st.session_state:
 # Function to generate story continuation
 def generate_continuation(prompt, choices=2):
     response = openai.Completion.create(
-        engine="text-davinci-002",
-        prompt=prompt,
+        model="gpt-3.5-turbo-instruct",  # Updated model
+        prompt=prompt + "\n\nProvide two distinct continuation options:",
         max_tokens=100,
         n=choices,
         stop=None,
         temperature=0.7,
     )
     return [choice.text.strip() for choice in response.choices]
+
 
 # Function to visualize the story graph
 def visualize_graph():
@@ -67,9 +68,8 @@ def visualize_graph():
         net.add_edge(edge[0], edge[1])
     
     net.toggle_physics(False)
-    net.show("story_graph.html")
     
-    return net.html
+    return net
 
 # Main story generation loop
 if st.button("Start New Story"):
@@ -93,7 +93,7 @@ if st.session_state.story_graph:
     col1, col2 = st.columns(2)
     
     with col1:
-        if st.button(continuations[0]):
+        if st.button(f"Option 1: {continuations[0][:50]}..."):
             new_node = len(st.session_state.story_graph)
             st.session_state.story_graph.add_node(new_node, text=continuations[0])
             st.session_state.story_graph.add_edge(st.session_state.current_node, new_node)
@@ -101,7 +101,7 @@ if st.session_state.story_graph:
             st.session_state.story.append(continuations[0])
     
     with col2:
-        if st.button(continuations[1]):
+        if st.button(f"Option 2: {continuations[1][:50]}..."):
             new_node = len(st.session_state.story_graph)
             st.session_state.story_graph.add_node(new_node, text=continuations[1])
             st.session_state.story_graph.add_edge(st.session_state.current_node, new_node)
@@ -109,7 +109,11 @@ if st.session_state.story_graph:
             st.session_state.story.append(continuations[1])
     
     st.markdown("### Story Multiverse Visualization")
-    st.components.v1.html(visualize_graph(), height=600)
+    net = visualize_graph()
+    net.save_graph("story_graph.html")
+    with open("story_graph.html", "r", encoding="utf-8") as f:
+        html = f.read()
+    st.components.v1.html(html, height=600)
 
     if st.button("Explore Alternative Timeline"):
         alternative_node = random.choice(list(st.session_state.story_graph.nodes))
