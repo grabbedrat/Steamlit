@@ -5,7 +5,6 @@ from embedding import generate_embeddings
 from clustering import preprocess_and_reduce, perform_clustering
 from visualization import create_cluster_visualization, display_cluster_contents
 from utils import generate_prompts
-from tagging import tag_bookmarks
 
 # Set page config
 st.set_page_config(layout="wide", page_title="Bookmark Clustering")
@@ -15,7 +14,11 @@ uploaded_file = st.file_uploader("Choose a bookmark HTML file", type="html", key
 
 if uploaded_file is not None:
     # Load and preprocess data
-    bookmarks_df = load_and_preprocess_data(uploaded_file)
+    if 'bookmarks_df' not in st.session_state:
+        st.session_state.bookmarks_df, st.session_state.tagging_info = load_and_preprocess_data(uploaded_file)
+    
+    bookmarks_df = st.session_state.bookmarks_df
+    tagging_info = st.session_state.tagging_info
     
     # Display bookmarks and tags
     st.header("Bookmarks and Tags")

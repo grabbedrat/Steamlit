@@ -54,19 +54,19 @@ async def process_batches(batches):
             results.extend(batch_results)
         return results
 
+
 def tag_bookmarks(bookmarks_df, batch_size=10):
     bookmarks_to_tag = bookmarks_df[bookmarks_df['tags'].isna() | (bookmarks_df['tags'] == '')].to_dict('records')
     total_to_tag = len(bookmarks_to_tag)
     
     if total_to_tag == 0:
-        st.write("No bookmarks need tagging.")
-        return bookmarks_df
+        return bookmarks_df, {"tagged_count": 0, "error_count": 0, "total_batches": 0, "processed_batches": 0}
+
+    batches = [bookmarks_to_tag[i:i + batch_size] for i in range(0, total_to_tag, batch_size)]
+    total_batches = len(batches)
 
     progress_bar = st.progress(0)
     status_text = st.empty()
-
-    # Prepare batches
-    batches = [bookmarks_to_tag[i:i + batch_size] for i in range(0, total_to_tag, batch_size)]
 
     # Process batches
     with ThreadPoolExecutor() as executor:
@@ -77,8 +77,11 @@ def tag_bookmarks(bookmarks_df, batch_size=10):
 
     # Update DataFrame with new tags
     tag_index = 0
+    error_count = 0
     for i, row in bookmarks_df.iterrows():
         if pd.isna(row['tags']) or row['tags'] == '':
+            if tags_results[tag_index] == "":
+                error_count += 1
             bookmarks_df.at[i, 'tags'] = tags_results[tag_index]
             tag_index += 1
         
@@ -87,4 +90,12 @@ def tag_bookmarks(bookmarks_df, batch_size=10):
         status_text.text(f"Processing bookmark {tag_index} of {total_to_tag}")
 
     status_text.text("Tagging complete!")
-    return bookmarks_df
+    
+    tagging_info = {
+        "tagged_count": tag_index,
+        "error_count": error_count,
+        "total_batches": total_batches,
+        "processed_batches": total_batches  # Assuming all batches were processed
+    }
+    
+    return bookmarks_df, tagging_info
