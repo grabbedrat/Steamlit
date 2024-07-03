@@ -76,12 +76,17 @@ if uploaded_file is not None:
                 help="Distance threshold for cluster merging. Larger values cause more aggressive merging. Use 0.0 for automatic selection."
             )
             
+            # In the clustering parameters section
             metric = st.selectbox(
                 'Distance Metric', 
-                ['euclidean', 'cosine', 'manhattan'], 
+                ['euclidean', 'manhattan', 'cosine'],  # Added 'cosine' back
                 key="distance_metric",
-                help="Method to calculate distance between points. 'euclidean' is standard, 'cosine' is good for high-dimensional data, 'manhattan' for sparse data."
+                help="Method to calculate distance between points. 'euclidean' is standard, 'cosine' is good for high-dimensional data, 'manhattan' for sparse data. Note: 'cosine' will precompute distances, which may be slower for large datasets."
             )
+
+            # Add a note about the cosine metric
+            if metric == 'cosine':
+                st.info("Using cosine similarity. This will precompute distances, which may take longer for large datasets.")
 
     with st.expander("Dimensionality Reduction", expanded=False):
         n_components = st.slider(
