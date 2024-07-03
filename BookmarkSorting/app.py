@@ -52,7 +52,7 @@ if uploaded_file is not None:
                 'Min Cluster Size', 
                 min_value=2, 
                 max_value=20, 
-                value=5, 
+                value=3, 
                 key="min_cluster_size",
                 help="Minimum number of samples in a cluster. Larger values result in fewer, larger clusters."
             )
@@ -80,6 +80,7 @@ if uploaded_file is not None:
             metric = st.selectbox(
                 'Distance Metric', 
                 ['euclidean', 'manhattan', 'cosine'],  # Added 'cosine' back
+                index=2,
                 key="distance_metric",
                 help="Method to calculate distance between points. 'euclidean' is standard, 'cosine' is good for high-dimensional data, 'manhattan' for sparse data. Note: 'cosine' will precompute distances, which may be slower for large datasets."
             )
