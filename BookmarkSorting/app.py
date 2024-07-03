@@ -5,12 +5,13 @@ from embedding import generate_embeddings
 from clustering import preprocess_and_reduce, perform_clustering
 from visualization import create_cluster_visualization, display_cluster_contents
 from utils import generate_prompts
+from tagging import tag_bookmarks
 
 # Set page config
 st.set_page_config(layout="wide", page_title="Bookmark Clustering")
 
 # File upload
-uploaded_file = st.file_uploader("Choose a bookmark HTML file", type="html")
+uploaded_file = st.file_uploader("Choose a bookmark HTML file", type="html", key="file_uploader")
 
 if uploaded_file is not None:
     # Load and preprocess data
@@ -23,7 +24,7 @@ if uploaded_file is not None:
         display_df = bookmarks_df[['title', 'url', 'tags']]
         
         # Add a search box
-        search_term = st.text_input("Search bookmarks", "")
+        search_term = st.text_input("Search bookmarks", "", key="search_bookmarks")
         
         if search_term:
             # Filter the dataframe based on the search term
@@ -34,21 +35,21 @@ if uploaded_file is not None:
             filtered_df = display_df
         
         # Display the filtered dataframe
-        st.dataframe(filtered_df)
+        st.dataframe(filtered_df, key="filtered_df")
     
     # Embedding generation
     embeddings = generate_embeddings(bookmarks_df['title'], bookmarks_df['url'])
 
     # Dimensionality reduction and clustering parameters
     with st.expander("Clustering Parameters", expanded=False):
-        min_cluster_size = st.slider('Min Cluster Size', 2, 20, 5)
-        min_samples = st.slider('Min Samples', 1, 10, 1)
-        cluster_selection_epsilon = st.slider('Cluster Selection Epsilon', 0.0, 1.0, 0.0)
-        metric = st.selectbox('Distance Metric', ['euclidean', 'cosine', 'manhattan'])
+        min_cluster_size = st.slider('Min Cluster Size', 2, 20, 5, key="min_cluster_size")
+        min_samples = st.slider('Min Samples', 1, 10, 1, key="min_samples")
+        cluster_selection_epsilon = st.slider('Cluster Selection Epsilon', 0.0, 1.0, 0.0, key="cluster_selection_epsilon")
+        metric = st.selectbox('Distance Metric', ['euclidean', 'cosine', 'manhattan'], key="distance_metric")
 
     with st.expander("Dimensionality Reduction", expanded=False):
-        n_components = st.slider('Number of Components', 2, 10, 2)
-        normalize = st.checkbox('Normalize Data', value=True)
+        n_components = st.slider('Number of Components', 2, 10, 2, key="n_components")
+        normalize = st.checkbox('Normalize Data', value=True, key="normalize_data")
 
     # Preprocessing and dimensionality reduction
     reduced_features = preprocess_and_reduce(embeddings, n_components, normalize)
@@ -69,8 +70,8 @@ if uploaded_file is not None:
     st.header('Generated Prompts')
     all_prompts = generate_prompts(clusterer.labels_, bookmarks_df)
     
-    for prompt in all_prompts:
-        st.text(prompt)
+    for i, prompt in enumerate(all_prompts):
+        st.text_area(f"Prompt {i+1}", prompt, height=100, key=f"prompt_{i}")
         st.text("")  # Add an empty line for readability
 
     # Download prompts
@@ -80,7 +81,8 @@ if uploaded_file is not None:
             label="Download Prompts",
             data=prompt_text,
             file_name="prompts.txt",
-            mime="text/plain"
+            mime="text/plain",
+            key="download_prompts"
         )
 
 else:
