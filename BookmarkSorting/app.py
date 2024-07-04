@@ -4,7 +4,7 @@ import numpy as np
 from data_preprocessing import load_and_preprocess_data
 from embedding import generate_embeddings
 from clustering import preprocess_and_reduce, perform_clustering, perform_hierarchical_clustering
-from visualization import create_cluster_visualization, plot_dendrogram, plot_treemap
+from visualization import create_cluster_visualization, plot_dendrogram, plot_treemap, create_minimum_spanning_tree
 from utils import generate_prompts
 
 # Set page config
@@ -90,6 +90,11 @@ if uploaded_file is not None:
             st.plotly_chart(treemap_fig, use_container_width=True)
         else:
             st.write("Not enough clusters to create a hierarchy. Try adjusting clustering parameters.")
+
+    # Minimum Spanning Tree Visualization
+    st.header('Minimum Spanning Tree')
+    mst_fig = create_minimum_spanning_tree(reduced_features, clusterer.labels_, bookmarks_df['title'])
+    st.plotly_chart(mst_fig, use_container_width=True)
 
     # Generate prompts
     st.header('Generated Prompts')
