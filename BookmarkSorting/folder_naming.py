@@ -74,7 +74,13 @@ async def process_batches(batches):
         return results
 
 def name_folders(llm_prompts, batch_size=5):
-    items_to_name = list(llm_prompts.items())
+    items_to_name = []
+    for folder_name, folder_info in llm_prompts.items():
+        items_to_name.append((folder_name, folder_info))
+        if 'subfolders' in folder_info:
+            for subfolder_name, subfolder_info in folder_info['subfolders'].items():
+                items_to_name.append((subfolder_name, subfolder_info))
+
     total_to_name = len(items_to_name)
     
     if total_to_name == 0:
@@ -97,15 +103,14 @@ def name_folders(llm_prompts, batch_size=5):
     new_names = {}
     for old_name, new_name, item_type, parent in naming_results:
         if item_type == 'folder':
-            new_names[old_name] = new_name
+            new_names[old_name] = {'name': new_name, 'subfolders': {}}
         else:  # subfolder
-            if parent not in new_names:
-                new_names[parent] = {}
-            new_names[parent][old_name] = new_name
+            parent_folder = next(folder for folder, info in llm_prompts.items() if 'subfolders' in info and old_name in info['subfolders'])
+            new_names[parent_folder]['subfolders'][old_name] = new_name
 
-        progress = min(len(new_names) / total_to_name, 1.0)
+        progress = min(len(naming_results) / total_to_name, 1.0)
         progress_bar.progress(progress)
-        status_text.text(f"Processing item {len(new_names)} of {total_to_name}")
+        status_text.text(f"Processing item {len(naming_results)} of {total_to_name}")
 
     status_text.text("Folder naming complete!")
 
@@ -114,14 +119,12 @@ def name_folders(llm_prompts, batch_size=5):
 def update_folder_names(hierarchy, new_names):
     updated_hierarchy = {}
     for folder_name, subfolders in hierarchy.items():
-        new_folder_name = new_names.get(folder_name, folder_name)
+        new_folder_info = new_names.get(folder_name, {'name': folder_name, 'subfolders': {}})
+        new_folder_name = new_folder_info['name']
         if isinstance(subfolders, dict):
             updated_subfolders = {}
             for subfolder_name, items in subfolders.items():
-                if isinstance(new_names.get(folder_name), dict):
-                    new_subfolder_name = new_names[folder_name].get(subfolder_name, subfolder_name)
-                else:
-                    new_subfolder_name = subfolder_name
+                new_subfolder_name = new_folder_info['subfolders'].get(subfolder_name, subfolder_name)
                 updated_subfolders[new_subfolder_name] = items
             updated_hierarchy[new_folder_name] = updated_subfolders
         else:

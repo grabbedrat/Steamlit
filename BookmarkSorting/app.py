@@ -106,14 +106,32 @@ if uploaded_file is not None:
 
     # Display the original and new folder names
     st.subheader("Folder Naming Results")
-    for old_name, new_name in new_folder_names.items():
-        if isinstance(new_name, dict):
-            st.write(f"Folder: {old_name} → {new_name.get(old_name, old_name)}")
-            for old_sub, new_sub in new_name.items():
-                if old_sub != old_name:
-                    st.write(f"  Subfolder: {old_sub} → {new_sub}")
-        else:
-            st.write(f"Folder: {old_name} → {new_name}")
+    for old_folder_name, folder_info in new_folder_names.items():
+        new_folder_name = folder_info['name']
+        st.write(f"Folder: {old_folder_name} → {new_folder_name}")
+        for old_subfolder_name, new_subfolder_name in folder_info['subfolders'].items():
+            st.write(f"  Subfolder: {old_subfolder_name} → {new_subfolder_name}")
+
+    # Add a section to show the content of each renamed folder
+    st.subheader("Folder Contents")
+    for old_folder_name, folder_info in new_folder_names.items():
+        new_folder_name = folder_info['name']
+        with st.expander(f"{new_folder_name} (was: {old_folder_name})"):
+            if 'subfolders' in llm_prompts[old_folder_name]:
+                for old_subfolder_name, subfolder_info in llm_prompts[old_folder_name]['subfolders'].items():
+                    new_subfolder_name = folder_info['subfolders'].get(old_subfolder_name, old_subfolder_name)
+                    st.write(f"Subfolder: {new_subfolder_name} (was: {old_subfolder_name})")
+                    st.write("\n".join(f"  - {item}" for item in subfolder_info['content']))
+                    st.write("")
+            else:
+                st.write("\n".join(f"- {item}" for item in llm_prompts[old_folder_name]['content']))
+
+    # Generate HTML structure with updated folder names
+    current_timestamp = int(time.time())
+    updated_hierarchical_html = generate_html_structure(updated_hierarchy, current_timestamp)
+
+    # Display a preview of the updated HTML structure
+    st.text_area("Preview of Updated Hierarchical Structure", updated_hierarchical_html[:1000] + "...", height=300)
 
     # Download updated HTML file
     st.download_button(

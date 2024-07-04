@@ -53,25 +53,30 @@ def generate_prompts(labels, bookmarks_df, linkage_matrix):
     for folder_name, subfolders in hierarchy.items():
         folder_content = []
         if isinstance(subfolders, dict):
+            subfolder_prompts = {}
             for subfolder_name, items in subfolders.items():
                 subfolder_content = [title for title, _ in items[:5]]
                 if len(items) > 5:
                     subfolder_content.append(f"... ({len(items) - 5} more)")
-                llm_prompts[subfolder_name] = {
+                subfolder_prompts[subfolder_name] = {
                     "type": "subfolder",
                     "parent": folder_name,
                     "content": subfolder_content
                 }
                 folder_content.append(f"{subfolder_name}: {', '.join(subfolder_content)}")
+            llm_prompts[folder_name] = {
+                "type": "folder",
+                "content": folder_content,
+                "subfolders": subfolder_prompts
+            }
         else:
             folder_content = [title for title, _ in subfolders[:5]]
             if len(subfolders) > 5:
                 folder_content.append(f"... ({len(subfolders) - 5} more)")
-        
-        llm_prompts[folder_name] = {
-            "type": "folder",
-            "content": folder_content
-        }
+            llm_prompts[folder_name] = {
+                "type": "folder",
+                "content": folder_content
+            }
     
     return llm_prompts, hierarchy
 
