@@ -36,7 +36,7 @@ if uploaded_file is not None:
             filtered_df = display_df
         
         st.dataframe(filtered_df, key="filtered_df")
-        
+
     # Set a default value for n_components
     n_components = 50
 
@@ -89,29 +89,26 @@ if uploaded_file is not None:
         else:
             st.write("Not enough clusters to create a hierarchy. Try adjusting clustering parameters.")
 
+
     # Minimum Spanning Tree Visualization
     st.header('Minimum Spanning Tree')
     mst_fig = create_minimum_spanning_tree(reduced_features, clusterer.labels_, bookmarks_df['title'])
     st.plotly_chart(mst_fig, use_container_width=True)
 
-    # Generate prompts
-    st.header('Generated Prompts')
-    all_prompts = generate_prompts(clusterer.labels_, bookmarks_df)
-    
-    for i, prompt in enumerate(all_prompts):
-        st.text_area(f"Prompt {i+1}", prompt, height=100, key=f"prompt_{i}")
-        st.text("")  # Add an empty line for readability
+    # Generate hierarchical HTML structure
+    st.header('Generated Hierarchical Structure')
+    hierarchical_html = generate_prompts(clusterer.labels_, bookmarks_df, linkage_matrix)
 
-    # Download prompts
-    if all_prompts:
-        prompt_text = "\n\n".join(all_prompts)
-        st.download_button(
-            label="Download Prompts",
-            data=prompt_text,
-            file_name="prompts.txt",
-            mime="text/plain",
-            key="download_prompts"
-        )
+    # Display a preview of the HTML structure
+    st.text_area("Preview of Hierarchical Structure", hierarchical_html[:1000] + "...", height=300)
+
+    # Download HTML file
+    st.download_button(
+        label="Download Hierarchical Bookmarks HTML",
+        data=hierarchical_html,
+        file_name="clustered_bookmarks.html",
+        mime="text/html",
+    )
 
 else:
     st.write("Please upload an HTML file containing your bookmarks.")
