@@ -28,7 +28,6 @@ def generate_llm_naming_prompt(folder_name, subfolders):
 
 def generate_prompts(labels, bookmarks_df, linkage_matrix):
     n_clusters = min(10, len(set(labels)) - 1)  # Adjust the number of clusters, excluding noise
-    current_timestamp = int(time.time())
     
     if n_clusters > 1:
         cluster_labels = fcluster(linkage_matrix, n_clusters, criterion='maxclust')
@@ -49,16 +48,34 @@ def generate_prompts(labels, bookmarks_df, linkage_matrix):
             else:
                 hierarchy['Uncategorized'].append((title, url))
 
-    # Generate LLM naming prompts for each top-level folder
-    llm_prompts = {folder_name: generate_llm_naming_prompt(folder_name, subfolders) 
-                   for folder_name, subfolders in hierarchy.items()}
+    # Generate LLM naming prompts for each folder and subfolder
+    llm_prompts = {}
+    for folder_name, subfolders in hierarchy.items():
+        folder_content = []
+        if isinstance(subfolders, dict):
+            for subfolder_name, items in subfolders.items():
+                subfolder_content = [title for title, _ in items[:5]]
+                if len(items) > 5:
+                    subfolder_content.append(f"... ({len(items) - 5} more)")
+                llm_prompts[subfolder_name] = {
+                    "type": "subfolder",
+                    "parent": folder_name,
+                    "content": subfolder_content
+                }
+                folder_content.append(f"{subfolder_name}: {', '.join(subfolder_content)}")
+        else:
+            folder_content = [title for title, _ in subfolders[:5]]
+            if len(subfolders) > 5:
+                folder_content.append(f"... ({len(subfolders) - 5} more)")
+        
+        llm_prompts[folder_name] = {
+            "type": "folder",
+            "content": folder_content
+        }
     
-    # Here you would call your LLM to get folder names
-    # For now, we'll just use placeholder names
-    folder_names = {f"Folder {i}": f"Named Folder {i}" for i in range(n_clusters)}
-    folder_names['Uncategorized'] = 'Miscellaneous'
+    return llm_prompts, hierarchy
 
-    # Generate HTML structure
+def generate_html_structure(hierarchy, current_timestamp):
     all_prompts = [
         '<!DOCTYPE NETSCAPE-Bookmark-file-1>',
         '<!-- This is an automatically generated file.',
@@ -74,13 +91,11 @@ def generate_prompts(labels, bookmarks_df, linkage_matrix):
     ]
 
     for high_level, subfolders in hierarchy.items():
-        folder_name = folder_names.get(high_level, high_level)
-        all_prompts.append(f'<DT><H3 ADD_DATE="{current_timestamp}" LAST_MODIFIED="{current_timestamp}">{folder_name}</H3>')
+        all_prompts.append(f'<DT><H3 ADD_DATE="{current_timestamp}" LAST_MODIFIED="{current_timestamp}">{high_level}</H3>')
         all_prompts.append('<DL><p>')
         if isinstance(subfolders, dict):
             for low_level, items in subfolders.items():
-                subfolder_name = folder_names.get(low_level, low_level)
-                all_prompts.append(f'<DT><H3 ADD_DATE="{current_timestamp}" LAST_MODIFIED="{current_timestamp}">{subfolder_name}</H3>')
+                all_prompts.append(f'<DT><H3 ADD_DATE="{current_timestamp}" LAST_MODIFIED="{current_timestamp}">{low_level}</H3>')
                 all_prompts.append('<DL><p>')
                 for title, url in items:
                     all_prompts.append(f'<DT><A HREF="{url}" ADD_DATE="{current_timestamp}" LAST_MODIFIED="{current_timestamp}">{title}</A>')
@@ -92,7 +107,7 @@ def generate_prompts(labels, bookmarks_df, linkage_matrix):
 
     all_prompts.append('</DL><p>')
     
-    return "\n".join(all_prompts), llm_prompts
+    return "\n".join(all_prompts)
 
 def perform_lsa(bookmarks_df, n_components):
     # Combine title, url, and tags into a single text field

@@ -1,11 +1,13 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
+import time
 from data_preprocessing import load_and_preprocess_data
 from embedding import generate_embeddings
 from clustering import preprocess_and_reduce, perform_clustering, perform_hierarchical_clustering
 from visualization import create_cluster_visualization, plot_dendrogram, plot_treemap, create_minimum_spanning_tree
-from utils import generate_prompts, perform_lsa
+from utils import generate_prompts, perform_lsa, generate_html_structure
+from folder_naming import name_folders, update_folder_names
 
 # Set page config
 st.set_page_config(layout="wide", page_title="Bookmark Clustering")
@@ -89,24 +91,35 @@ if uploaded_file is not None:
     mst_fig = create_minimum_spanning_tree(reduced_features, clusterer.labels_, bookmarks_df['title'])
     st.plotly_chart(mst_fig, use_container_width=True)
 
-    # Generate hierarchical HTML structure and LLM prompts
-    st.header('Generated Hierarchical Structure')
-    hierarchical_html, llm_prompts = generate_prompts(clusterer.labels_, bookmarks_df, linkage_matrix)
+    # Generate LLM prompts and hierarchy
+    llm_prompts, hierarchy = generate_prompts(clusterer.labels_, bookmarks_df, linkage_matrix)
 
-    # Display a preview of the HTML structure
-    st.text_area("Preview of Hierarchical Structure", hierarchical_html[:1000] + "...", height=300)
+    # Generate new folder names
+    new_folder_names = name_folders(llm_prompts)
 
-    # Display the LLM prompts
-    st.subheader("LLM Naming Prompts")
-    for folder_name, prompt in llm_prompts.items():
-        with st.expander(f"Prompt for {folder_name}"):
-            st.text_area(f"Naming prompt for {folder_name}", prompt, height=200)
+    # Update the hierarchy with new folder names
+    updated_hierarchy = update_folder_names(hierarchy, new_folder_names)
 
-    # Download HTML file
+    # Generate HTML structure with updated folder names
+    current_timestamp = int(time.time())
+    updated_hierarchical_html = generate_html_structure(updated_hierarchy, current_timestamp)
+
+    # Display the original and new folder names
+    st.subheader("Folder Naming Results")
+    for old_name, new_name in new_folder_names.items():
+        if isinstance(new_name, dict):
+            st.write(f"Folder: {old_name} → {new_name.get(old_name, old_name)}")
+            for old_sub, new_sub in new_name.items():
+                if old_sub != old_name:
+                    st.write(f"  Subfolder: {old_sub} → {new_sub}")
+        else:
+            st.write(f"Folder: {old_name} → {new_name}")
+
+    # Download updated HTML file
     st.download_button(
-        label="Download Hierarchical Bookmarks HTML",
-        data=hierarchical_html,
-        file_name="clustered_bookmarks.html",
+        label="Download Updated Hierarchical Bookmarks HTML",
+        data=updated_hierarchical_html,
+        file_name="updated_clustered_bookmarks.html",
         mime="text/html",
     )
 
