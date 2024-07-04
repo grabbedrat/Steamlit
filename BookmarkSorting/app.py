@@ -5,7 +5,8 @@ from data_preprocessing import load_and_preprocess_data
 from embedding import generate_embeddings
 from clustering import preprocess_and_reduce, perform_clustering, perform_hierarchical_clustering
 from visualization import create_cluster_visualization, plot_dendrogram, plot_treemap, create_minimum_spanning_tree
-from utils import generate_prompts
+from utils import generate_prompts, perform_lsa
+
 
 # Set page config
 st.set_page_config(layout="wide", page_title="Bookmark Clustering")
@@ -35,9 +36,13 @@ if uploaded_file is not None:
             filtered_df = display_df
         
         st.dataframe(filtered_df, key="filtered_df")
-    
+        
+    # Set a default value for n_components
+    n_components = 50
+
+
     # Embedding generation
-    embeddings = generate_embeddings(bookmarks_df['title'], bookmarks_df['url'], bookmarks_df['tags'])
+    lsa_matrix = perform_lsa(bookmarks_df, n_components)
 
     # Clustering parameters
     with st.expander("Clustering Parameters", expanded=False):
@@ -57,19 +62,12 @@ if uploaded_file is not None:
             metric = st.selectbox('Distance Metric', ['euclidean', 'manhattan', 'cosine'], index=2, key="distance_metric",
                                   help="Method to calculate distance between points. 'cosine' is often good for text-based data.")
 
-    # Dimensionality reduction parameters
-    with st.expander("Dimensionality Reduction", expanded=False):
-        dimensionality_reduction_method = st.selectbox('Dimensionality Reduction Method', ['PCA', 'UMAP', 't-SNE'], index=1, key="dimensionality_reduction_method",
-                                                       help="Method to reduce the dimensionality of the data. UMAP and t-SNE often produce better separations for visualization.")
-        
-        n_components = st.slider('Number of Components', min_value=2, max_value=50, value=10, key="n_components",
-                                 help="Number of dimensions to reduce the data to. Higher values preserve more information.")
-        
-        normalize = st.checkbox('Normalize Data', value=True, key="normalize_data",
-                                help="Standardize features by removing the mean and scaling to unit variance.")
+    # LSA parameters
+    with st.expander("LSA Parameters", expanded=False):
+        n_components = st.slider('Number of LSA Components', min_value=2, max_value=100, value=50, key="n_components",
+                                help="Number of concepts to extract using LSA. Higher values preserve more information but may include noise.")
 
-    # Preprocessing and dimensionality reduction
-    reduced_features = preprocess_and_reduce(embeddings, n_components, normalize, dimensionality_reduction_method)
+    reduced_features = lsa_matrix
 
     # Clustering
     clusterer = perform_clustering(reduced_features, min_cluster_size, min_samples, cluster_selection_epsilon, metric)

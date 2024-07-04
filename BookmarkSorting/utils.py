@@ -1,3 +1,6 @@
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.decomposition import TruncatedSVD
+
 def generate_prompts(labels, bookmarks_df):
     all_prompts = []
     
@@ -19,3 +22,19 @@ def generate_prompts(labels, bookmarks_df):
                 all_prompts.append(prompt)
 
     return all_prompts
+
+def perform_lsa(bookmarks_df, n_components):
+    # Combine title, url, and tags into a single text field
+    bookmarks_df['text'] = bookmarks_df['title'] + ' ' + bookmarks_df['url'] + ' ' + bookmarks_df['tags']
+    
+    # Create TF-IDF vectorizer
+    vectorizer = TfidfVectorizer(stop_words='english')
+    
+    # Fit and transform the text data
+    tfidf_matrix = vectorizer.fit_transform(bookmarks_df['text'])
+    
+    # Perform LSA using TruncatedSVD
+    lsa = TruncatedSVD(n_components=n_components, random_state=42)
+    lsa_matrix = lsa.fit_transform(tfidf_matrix)
+    
+    return lsa_matrix
