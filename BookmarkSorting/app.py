@@ -7,7 +7,6 @@ from clustering import preprocess_and_reduce, perform_clustering, perform_hierar
 from visualization import create_cluster_visualization, plot_dendrogram, plot_treemap, create_minimum_spanning_tree
 from utils import generate_prompts, perform_lsa
 
-
 # Set page config
 st.set_page_config(layout="wide", page_title="Bookmark Clustering")
 
@@ -37,9 +36,10 @@ if uploaded_file is not None:
         
         st.dataframe(filtered_df, key="filtered_df")
 
-    # Set a default value for n_components
-    n_components = 50
-
+    # LSA parameters
+    with st.expander("LSA Parameters", expanded=False):
+        n_components = st.slider('Number of LSA Components', min_value=2, max_value=100, value=50, key="n_components",
+                                help="Number of concepts to extract using LSA. Higher values preserve more information but may include noise.")
 
     # Embedding generation
     lsa_matrix = perform_lsa(bookmarks_df, n_components)
@@ -61,11 +61,6 @@ if uploaded_file is not None:
             
             metric = st.selectbox('Distance Metric', ['euclidean', 'manhattan', 'cosine'], index=2, key="distance_metric",
                                   help="Method to calculate distance between points. 'cosine' is often good for text-based data.")
-
-    # LSA parameters
-    with st.expander("LSA Parameters", expanded=False):
-        n_components = st.slider('Number of LSA Components', min_value=2, max_value=100, value=50, key="n_components",
-                                help="Number of concepts to extract using LSA. Higher values preserve more information but may include noise.")
 
     reduced_features = lsa_matrix
 
@@ -89,18 +84,23 @@ if uploaded_file is not None:
         else:
             st.write("Not enough clusters to create a hierarchy. Try adjusting clustering parameters.")
 
-
     # Minimum Spanning Tree Visualization
     st.header('Minimum Spanning Tree')
     mst_fig = create_minimum_spanning_tree(reduced_features, clusterer.labels_, bookmarks_df['title'])
     st.plotly_chart(mst_fig, use_container_width=True)
 
-    # Generate hierarchical HTML structure
+    # Generate hierarchical HTML structure and LLM prompts
     st.header('Generated Hierarchical Structure')
-    hierarchical_html = generate_prompts(clusterer.labels_, bookmarks_df, linkage_matrix)
+    hierarchical_html, llm_prompts = generate_prompts(clusterer.labels_, bookmarks_df, linkage_matrix)
 
     # Display a preview of the HTML structure
     st.text_area("Preview of Hierarchical Structure", hierarchical_html[:1000] + "...", height=300)
+
+    # Display the LLM prompts
+    st.subheader("LLM Naming Prompts")
+    for folder_name, prompt in llm_prompts.items():
+        with st.expander(f"Prompt for {folder_name}"):
+            st.text_area(f"Naming prompt for {folder_name}", prompt, height=200)
 
     # Download HTML file
     st.download_button(
