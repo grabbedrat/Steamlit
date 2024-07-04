@@ -74,7 +74,6 @@ if uploaded_file is not None:
     # Clustering
     clusterer = perform_clustering(reduced_features, min_cluster_size, min_samples, cluster_selection_epsilon, metric)
 
-
     # Visualization
     st.header('Cluster Visualization and Hierarchy')
     col1, col2 = st.columns(2)
