@@ -4,7 +4,7 @@ import numpy as np
 import time
 from data_preprocessing import load_and_preprocess_data
 from embedding import generate_embeddings
-from clustering import preprocess_and_reduce, perform_clustering, perform_hierarchical_clustering
+from clustering import preprocess_and_reduce, perform_clustering, perform_hierarchical_clustering, plot_silhouette
 from visualization import create_cluster_visualization, plot_dendrogram, plot_treemap, create_minimum_spanning_tree
 from utils import generate_prompts, perform_lsa, generate_html_structure
 from folder_naming import name_folders, update_folder_names
@@ -67,7 +67,18 @@ if uploaded_file is not None:
     reduced_features = lsa_matrix
 
     # Clustering
-    clusterer = perform_clustering(reduced_features, min_cluster_size, min_samples, cluster_selection_epsilon, metric)
+    clusterer, silhouette_avg = perform_clustering(reduced_features, min_cluster_size, min_samples, cluster_selection_epsilon, metric)
+
+    if silhouette_avg != -1:
+        st.write(f"Silhouette Score: {silhouette_avg:.4f}")
+
+        # Silhouette Plot
+        st.subheader("Silhouette Plot")
+        silhouette_fig = plot_silhouette(reduced_features, clusterer.labels_)
+        if silhouette_fig:
+            st.pyplot(silhouette_fig)
+    else:
+        st.warning("Could not calculate silhouette score. There might not be enough clusters or non-noise points.")
 
     # Visualization
     st.header('Cluster Visualization and Hierarchy')
